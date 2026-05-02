@@ -1,6 +1,7 @@
 // src/hooks/useConversation.ts
 import { create } from 'zustand';
 import anthropic from '../services/anthropic';
+import { isCrisis } from '../services/crisisDetection';
 
 // Based on the principles from the project spec
 const SYSTEM_PROMPT = `You are MindBridge, a supportive wellbeing companion for university students.
@@ -34,6 +35,7 @@ interface Message {
 interface ConversationState {
   messages: Message[];
   isLoading: boolean;
+  isCrisis: boolean;
   sendMessage: (text: string, mood: number, sleep: number) => Promise<void>;
 }
 
@@ -42,9 +44,21 @@ const useConversation = create<ConversationState>((set, get) => ({
     { id: '1', text: "I'm here to listen. What's on your mind?", sender: 'ai' }
   ],
   isLoading: false,
+  isCrisis: false,
   sendMessage: async (text: string, mood: number, sleep: number) => {
     const newMessage: Message = { id: Date.now().toString(), text, sender: 'user' };
     set(state => ({ messages: [...state.messages, newMessage] }));
+
+    if (isCrisis(text)) {
+      const crisisMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: "It sounds like you're going through a lot. For immediate support, it's best to connect with a crisis service.",
+        sender: 'ai',
+      };
+      set(state => ({ messages: [...state.messages, crisisMessage], isCrisis: true }));
+      return;
+    }
+
     set({ isLoading: true });
 
     const history = get().messages.map(msg => ({
@@ -52,10 +66,7 @@ const useConversation = create<ConversationState>((set, get) => ({
       content: msg.text,
     }));
 
-    // Add mood and sleep to the system prompt
-    const systemPromptWithContext = `${SYSTEM_PROMPT}
-
-Context: Student reported mood score ${mood}/5, sleep quality ${sleep}/10.`;
+    const systemPromptWithContext = `${SYSTEM_PROMPT}\n\nContext: Student reported mood score ${mood}/5, sleep quality ${sleep}/10.`;
 
     try {
       const response = await anthropic.messages.create({
