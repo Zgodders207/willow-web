@@ -34,7 +34,7 @@ interface Message {
 interface ConversationState {
   messages: Message[];
   isLoading: boolean;
-  sendMessage: (text: string) => Promise<void>;
+  sendMessage: (text: string, mood: number, sleep: number) => Promise<void>;
 }
 
 const useConversation = create<ConversationState>((set, get) => ({
@@ -42,7 +42,7 @@ const useConversation = create<ConversationState>((set, get) => ({
     { id: '1', text: "I'm here to listen. What's on your mind?", sender: 'ai' }
   ],
   isLoading: false,
-  sendMessage: async (text: string) => {
+  sendMessage: async (text: string, mood: number, sleep: number) => {
     const newMessage: Message = { id: Date.now().toString(), text, sender: 'user' };
     set(state => ({ messages: [...state.messages, newMessage] }));
     set({ isLoading: true });
@@ -52,10 +52,15 @@ const useConversation = create<ConversationState>((set, get) => ({
       content: msg.text,
     }));
 
+    // Add mood and sleep to the system prompt
+    const systemPromptWithContext = `${SYSTEM_PROMPT}
+
+Context: Student reported mood score ${mood}/5, sleep quality ${sleep}/10.`;
+
     try {
       const response = await anthropic.messages.create({
         model: 'claude-3-sonnet-20240229',
-        system: SYSTEM_PROMPT,
+        system: systemPromptWithContext,
         max_tokens: 1024,
         messages: history,
       });

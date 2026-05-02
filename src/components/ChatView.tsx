@@ -1,24 +1,8 @@
 // src/components/ChatView.tsx
-import React, { useState, useRef, useEffect } from 'react';
-import useConversation from '../store/useConversation';
-
-const MessageBubble: React.FC<{ message: { text: string; sender: 'user' | 'ai' } }> = ({ message }) => {
-  const isUser = message.sender === 'user';
-  return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
-      <div
-        className={`rounded-lg px-4 py-2 max-w-sm ${
-          isUser ? 'bg-blue-600 text-white' : 'bg-gray-700 text-white'
-        }`}
-      >
-        {message.text}
-      </div>
-    </div>
-  );
-};
-
+import useCheckIn from '../store/useCheckIn';
 const ChatView: React.FC = () => {
   const { messages, isLoading, sendMessage } = useConversation();
+  const { mood, sleep } = useCheckIn();
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -30,7 +14,7 @@ const ChatView: React.FC = () => {
 
   const handleSend = () => {
     if (inputText.trim()) {
-      sendMessage(inputText.trim());
+      sendMessage(inputText.trim(), mood, sleep);
       setInputText('');
     }
   };
